@@ -83,7 +83,6 @@ export default function PhotoUploader({ reportId, photos, onChange }) {
             type="file"
             accept="image/*"
             multiple
-            capture="environment"
             onChange={handleFiles}
             disabled={uploading}
             className="text-xs"
