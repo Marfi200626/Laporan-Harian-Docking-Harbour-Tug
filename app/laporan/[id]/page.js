@@ -8,6 +8,7 @@ import PhotoUploader from "@/components/PhotoUploader";
 import SignatureBlock from "@/components/SignatureBlock";
 import { supabase } from "@/lib/supabaseClient";
 import { exportReportToDocx, exportReportToPdf } from "@/lib/generateDocx";
+import { NAMA_BY_JABATAN, JENIS_SURVEI_OPTIONS, LOKASI_DOCK_OPTIONS, NAMA_KAPAL_OPTIONS } from "@/lib/refData";
 
 function FormContent() {
   const { id } = useParams();
@@ -83,16 +84,35 @@ function FormContent() {
   }
 
   function addPO() {
-    const updated = { ...report.pekerjaan_dock, outstanding_po: [...(report.pekerjaan_dock.outstanding_po || []), { no_po: "", nama_barang: "", outstanding: "" }] };
+    const updated = { ...report.pekerjaan_dock, outstanding_po: [...(report.pekerjaan_dock.outstanding_po || []), { no_po: "", items: [{ nama_barang: "", outstanding: "" }] }] };
     updateField("pekerjaan_dock", updated);
   }
-  function updatePO(index, field, value) {
+  function updatePOField(index, field, value) {
     const po = [...report.pekerjaan_dock.outstanding_po];
     po[index] = { ...po[index], [field]: value };
     updateField("pekerjaan_dock", { ...report.pekerjaan_dock, outstanding_po: po });
   }
   function removePO(index) {
     const po = report.pekerjaan_dock.outstanding_po.filter((_, i) => i !== index);
+    updateField("pekerjaan_dock", { ...report.pekerjaan_dock, outstanding_po: po });
+  }
+  function addPOItem(poIndex) {
+    const po = [...report.pekerjaan_dock.outstanding_po];
+    const items = [...(po[poIndex].items || []), { nama_barang: "", outstanding: "" }];
+    po[poIndex] = { ...po[poIndex], items };
+    updateField("pekerjaan_dock", { ...report.pekerjaan_dock, outstanding_po: po });
+  }
+  function updatePOItem(poIndex, itemIndex, field, value) {
+    const po = [...report.pekerjaan_dock.outstanding_po];
+    const items = [...(po[poIndex].items || [])];
+    items[itemIndex] = { ...items[itemIndex], [field]: value };
+    po[poIndex] = { ...po[poIndex], items };
+    updateField("pekerjaan_dock", { ...report.pekerjaan_dock, outstanding_po: po });
+  }
+  function removePOItem(poIndex, itemIndex) {
+    const po = [...report.pekerjaan_dock.outstanding_po];
+    const items = (po[poIndex].items || []).filter((_, i) => i !== itemIndex);
+    po[poIndex] = { ...po[poIndex], items };
     updateField("pekerjaan_dock", { ...report.pekerjaan_dock, outstanding_po: po });
   }
 
@@ -218,24 +238,45 @@ function FormContent() {
             <p className="section-title">Data Umum</p>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label>Nama OS/DS/TS</label>
-                <input value={report.nama_os || ""} onChange={(e) => updateField("nama_os", e.target.value)} />
-              </div>
-              <div>
-                <label>Nama Kapal</label>
-                <input value={report.nama_kapal || ""} onChange={(e) => updateField("nama_kapal", e.target.value)} />
-              </div>
-              <div>
                 <label>Jabatan</label>
-                <select value={report.jabatan || "Owner Superintendent (OS)"} onChange={(e) => updateField("jabatan", e.target.value)}>
+                <select
+                  value={report.jabatan || "Owner Superintendent (OS)"}
+                  onChange={(e) => {
+                    updateField("jabatan", e.target.value);
+                    updateField("nama_os", ""); // reset nama karena daftar pilihan berubah
+                  }}
+                >
                   <option value="Owner Superintendent (OS)">Owner Superintendent (OS)</option>
                   <option value="Docking Superintendent (DS)">Docking Superintendent (DS)</option>
                   <option value="Technical Superintendent (TS)">Technical Superintendent (TS)</option>
                 </select>
               </div>
               <div>
+                <label>Nama Kapal</label>
+                <select value={report.nama_kapal || ""} onChange={(e) => updateField("nama_kapal", e.target.value)}>
+                  <option value="">-- Pilih Kapal --</option>
+                  {NAMA_KAPAL_OPTIONS.map((n) => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label>Nama OS/DS/TS</label>
+                <select value={report.nama_os || ""} onChange={(e) => updateField("nama_os", e.target.value)}>
+                  <option value="">-- Pilih Nama --</option>
+                  {(NAMA_BY_JABATAN[report.jabatan] || NAMA_BY_JABATAN["Owner Superintendent (OS)"]).map((n) => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
                 <label>Jenis Survei</label>
-                <input value={report.jenis_survei || ""} onChange={(e) => updateField("jenis_survei", e.target.value)} />
+                <select value={report.jenis_survei || ""} onChange={(e) => updateField("jenis_survei", e.target.value)}>
+                  <option value="">-- Pilih Jenis Survei --</option>
+                  {JENIS_SURVEI_OPTIONS.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label>Divisi/Dept.</label>
@@ -251,7 +292,12 @@ function FormContent() {
               </div>
               <div>
                 <label>Lokasi Docking</label>
-                <input value={report.lokasi_docking || ""} onChange={(e) => updateField("lokasi_docking", e.target.value)} />
+                <select value={report.lokasi_docking || ""} onChange={(e) => updateField("lokasi_docking", e.target.value)}>
+                  <option value="">-- Pilih Lokasi --</option>
+                  {LOKASI_DOCK_OPTIONS.map((l) => (
+                    <option key={l} value={l}>{l}</option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>
@@ -354,26 +400,36 @@ function FormContent() {
             <div>
               <div className="flex items-center justify-between">
                 <label className="!mb-0">4. Outstanding Permintaan Barang</label>
-                <button type="button" onClick={addPO} className="btn-secondary text-xs">+ Tambah Barang</button>
+                <button type="button" onClick={addPO} className="btn-secondary text-xs">+ Tambah No. PO</button>
               </div>
               <div className="space-y-3 mt-2">
                 {(report.pekerjaan_dock?.outstanding_po || []).map((po, i) => (
                   <div key={i} className="border border-slate-200 rounded-md p-3 space-y-2">
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label>No. PO</label>
-                        <input value={po?.no_po || ""} onChange={(e) => updatePO(i, "no_po", e.target.value)} placeholder="cth: LRD126061309" />
-                      </div>
-                      <div>
-                        <label>Nama Barang</label>
-                        <input value={po?.nama_barang || ""} onChange={(e) => updatePO(i, "nama_barang", e.target.value)} placeholder="cth: Cooling Fan Alternator" />
-                      </div>
-                    </div>
                     <div>
-                      <label>Outstanding / Status</label>
-                      <input value={po?.outstanding || ""} onChange={(e) => updatePO(i, "outstanding", e.target.value)} placeholder="cth: Estimasi tiba 21 Juli di Belawan" />
+                      <label>No. PO</label>
+                      <input value={po?.no_po || ""} onChange={(e) => updatePOField(i, "no_po", e.target.value)} placeholder="cth: LRD126061309" />
                     </div>
-                    <button type="button" onClick={() => removePO(i)} className="btn-danger">Hapus</button>
+
+                    <div className="space-y-2">
+                      {(po.items || []).map((item, j) => (
+                        <div key={j} className="grid grid-cols-2 gap-2 bg-slate-50 p-2 rounded">
+                          <div>
+                            <label>Nama Barang {j + 1}</label>
+                            <input value={item?.nama_barang || ""} onChange={(e) => updatePOItem(i, j, "nama_barang", e.target.value)} placeholder="cth: Cooling Fan Alternator" />
+                          </div>
+                          <div>
+                            <label>Outstanding / Status</label>
+                            <div className="flex gap-2">
+                              <input value={item?.outstanding || ""} onChange={(e) => updatePOItem(i, j, "outstanding", e.target.value)} placeholder="cth: Estimasi tiba 21 Juli" />
+                              <button type="button" onClick={() => removePOItem(i, j)} className="btn-danger shrink-0">Hapus</button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      <button type="button" onClick={() => addPOItem(i)} className="btn-secondary text-xs">+ Tambah Barang Lain di PO Ini</button>
+                    </div>
+
+                    <button type="button" onClick={() => removePO(i)} className="btn-danger block">Hapus No. PO Ini</button>
                   </div>
                 ))}
                 {(!report.pekerjaan_dock?.outstanding_po || report.pekerjaan_dock.outstanding_po.length === 0) && (
@@ -471,8 +527,6 @@ function FormContent() {
               roleCode="OS"
               nama={report.dibuat_oleh_nama}
               jabatanValue={report.jabatan || "Owner Superintendent (OS)"}
-              jabatanOptions={["Owner Superintendent (OS)", "Docking Superintendent (DS)", "Technical Superintendent (TS)"]}
-              onJabatanChange={(v) => updateField("jabatan", v)}
               barcode={report.dibuat_oleh_barcode}
               signedAt={report.ditandatangani_os_at}
               reportId={id}

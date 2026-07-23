@@ -133,6 +133,12 @@ create policy "reports_update_authenticated"
   using (true)
   with check (true);
 
+drop policy if exists "reports_delete_authenticated" on reports;
+create policy "reports_delete_authenticated"
+  on reports for delete
+  to authenticated
+  using (true);
+
 drop policy if exists "photos_select_authenticated" on report_photos;
 create policy "photos_select_authenticated"
   on report_photos for select

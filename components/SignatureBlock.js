@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { generateBarcodeDataUrl, buildSignatureCode } from "@/lib/barcode";
+import { generateSignatureStamp, buildSignatureCode } from "@/lib/barcode";
 
 export default function SignatureBlock({
   title,
@@ -27,7 +27,7 @@ export default function SignatureBlock({
     }
     const timestamp = new Date().toISOString();
     const code = buildSignatureCode(reportId, roleCode, draftNama.trim(), timestamp);
-    const barcodeDataUrl = generateBarcodeDataUrl(code);
+    const barcodeDataUrl = generateSignatureStamp(code, draftNama.trim(), timestamp);
     onSign({ nama: draftNama.trim(), timestamp, barcode: barcodeDataUrl, code });
   }
 
@@ -61,7 +61,7 @@ export default function SignatureBlock({
             {new Date(signedAt).toLocaleString("id-ID")}
           </p>
           {barcode && (
-            <img src={barcode} alt="Barcode tanda tangan" className="mx-auto h-10" />
+            <img src={barcode} alt="Barcode tanda tangan" className="mx-auto h-24" />
           )}
         </div>
       ) : (

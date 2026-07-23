@@ -105,11 +105,11 @@ export default function PhotoUploader({ reportId, photos, onChange }) {
             key={p.id}
             className="border border-slate-200 rounded-lg overflow-hidden bg-slate-50"
           >
-            <div className="relative">
+            <div className="relative bg-slate-200 flex items-center justify-center h-40">
               <img
                 src={p.url}
                 alt={p.caption || `Foto ${i + 1}`}
-                className="w-full h-32 object-cover"
+                className="max-w-full max-h-full object-contain"
               />
               <span className="absolute top-1 left-1 bg-navy-900/80 text-white text-[10px] font-bold px-2 py-0.5 rounded">
                 Foto {i + 1}
