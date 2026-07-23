@@ -45,7 +45,11 @@ create table if not exists reports (
     "engine": {"crew":"", "shipyard":"", "workshop":""},
     "outstanding_pekerjaan":"",
     "outstanding_po": [],
-    "sumber_daya": {"crew":0, "shipyard":0, "teknisi":0}
+    "sumber_daya": {
+      "crew": {"deck": 0, "engine": 0},
+      "shipyard": {"welder": 0, "piping": 0, "hse": 0, "docking_undocking": 0},
+      "teknisi": {"me": 0, "ae": 0, "electrician": 0}
+    }
   }'::jsonb,
 
   -- Additional Notes - array of { no, catatan }
@@ -55,9 +59,12 @@ create table if not exists reports (
   status text not null default 'draft', -- draft | signed
   dibuat_oleh_nama text,
   dibuat_oleh_jabatan text default 'Owner Superintendent',
+  dibuat_oleh_role text default 'OS', -- OS | DS | TS
+  dibuat_oleh_barcode text,
   ditandatangani_os_at timestamptz,
   diketahui_oleh_nama text,
   diketahui_oleh_jabatan text default 'Operation Manager',
+  diketahui_oleh_barcode text,
   ditandatangani_om_at timestamptz,
 
   created_by uuid references auth.users(id),
@@ -168,3 +175,12 @@ create policy "dokumentasi_delete_authenticated"
   on storage.objects for delete
   to authenticated
   using (bucket_id = 'dokumentasi-docking');
+
+-- =========================================================
+-- MIGRASI (aman dijalankan berkali-kali, tidak menghapus data)
+-- Jalankan blok ini jika tabel "reports" SUDAH ada sebelumnya
+-- dari versi awal aplikasi, supaya kolom baru ikut ditambahkan.
+-- =========================================================
+alter table reports add column if not exists dibuat_oleh_role text default 'OS';
+alter table reports add column if not exists dibuat_oleh_barcode text;
+alter table reports add column if not exists diketahui_oleh_barcode text;

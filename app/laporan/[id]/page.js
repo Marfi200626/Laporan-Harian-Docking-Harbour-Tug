@@ -5,8 +5,9 @@ import { useParams, useRouter } from "next/navigation";
 import AuthGuard from "@/components/AuthGuard";
 import Navbar from "@/components/Navbar";
 import PhotoUploader from "@/components/PhotoUploader";
+import SignatureBlock from "@/components/SignatureBlock";
 import { supabase } from "@/lib/supabaseClient";
-import { exportReportToDocx } from "@/lib/generateDocx";
+import { exportReportToDocx, exportReportToPdf } from "@/lib/generateDocx";
 
 function FormContent() {
   const { id } = useParams();
@@ -18,6 +19,7 @@ function FormContent() {
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState(null);
   const [exporting, setExporting] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -81,12 +83,12 @@ function FormContent() {
   }
 
   function addPO() {
-    const updated = { ...report.pekerjaan_dock, outstanding_po: [...(report.pekerjaan_dock.outstanding_po || []), ""] };
+    const updated = { ...report.pekerjaan_dock, outstanding_po: [...(report.pekerjaan_dock.outstanding_po || []), { no_po: "", nama_barang: "", outstanding: "" }] };
     updateField("pekerjaan_dock", updated);
   }
-  function updatePO(index, value) {
+  function updatePO(index, field, value) {
     const po = [...report.pekerjaan_dock.outstanding_po];
-    po[index] = value;
+    po[index] = { ...po[index], [field]: value };
     updateField("pekerjaan_dock", { ...report.pekerjaan_dock, outstanding_po: po });
   }
   function removePO(index) {
@@ -118,23 +120,21 @@ function FormContent() {
     if (!error) setSavedAt(new Date());
   }, [report, id]);
 
-  async function handleSignOS() {
-    const nama = prompt("Ketik nama lengkap Anda untuk menandatangani sebagai Owner Superintendent:");
-    if (!nama) return;
+  async function handleSignOS({ nama, timestamp, barcode }) {
     const payload = {
       dibuat_oleh_nama: nama,
-      ditandatangani_os_at: new Date().toISOString(),
+      ditandatangani_os_at: timestamp,
+      dibuat_oleh_barcode: barcode,
     };
     setReport((r) => ({ ...r, ...payload }));
     await supabase.from("reports").update(payload).eq("id", id);
   }
 
-  async function handleSignOM() {
-    const nama = prompt("Ketik nama lengkap Anda untuk menandatangani sebagai Operation Manager:");
-    if (!nama) return;
+  async function handleSignOM({ nama, timestamp, barcode }) {
     const payload = {
       diketahui_oleh_nama: nama,
-      ditandatangani_om_at: new Date().toISOString(),
+      ditandatangani_om_at: timestamp,
+      diketahui_oleh_barcode: barcode,
       status: "signed",
     };
     setReport((r) => ({ ...r, ...payload }));
@@ -156,6 +156,16 @@ function FormContent() {
       alert("Gagal membuat file Word: " + e.message);
     }
     setExporting(false);
+  }
+
+  async function handleExportPdf() {
+    setExportingPdf(true);
+    try {
+      await exportReportToPdf(report, photos);
+    } catch (e) {
+      alert("Gagal membuat file PDF: " + e.message);
+    }
+    setExportingPdf(false);
   }
 
   async function handleDelete() {
@@ -208,7 +218,7 @@ function FormContent() {
             <p className="section-title">Data Umum</p>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label>Nama OS/DS</label>
+                <label>Nama OS/DS/TS</label>
                 <input value={report.nama_os || ""} onChange={(e) => updateField("nama_os", e.target.value)} />
               </div>
               <div>
@@ -217,7 +227,11 @@ function FormContent() {
               </div>
               <div>
                 <label>Jabatan</label>
-                <input value={report.jabatan || ""} onChange={(e) => updateField("jabatan", e.target.value)} />
+                <select value={report.jabatan || "Owner Superintendent (OS)"} onChange={(e) => updateField("jabatan", e.target.value)}>
+                  <option value="Owner Superintendent (OS)">Owner Superintendent (OS)</option>
+                  <option value="Docking Superintendent (DS)">Docking Superintendent (DS)</option>
+                  <option value="Technical Superintendent (TS)">Technical Superintendent (TS)</option>
+                </select>
               </div>
               <div>
                 <label>Jenis Survei</label>
@@ -339,33 +353,83 @@ function FormContent() {
 
             <div>
               <div className="flex items-center justify-between">
-                <label className="!mb-0">4. Outstanding Permintaan Barang (No. PO)</label>
-                <button type="button" onClick={addPO} className="btn-secondary text-xs">+ PO</button>
+                <label className="!mb-0">4. Outstanding Permintaan Barang</label>
+                <button type="button" onClick={addPO} className="btn-secondary text-xs">+ Tambah Barang</button>
               </div>
-              <div className="space-y-2 mt-2">
+              <div className="space-y-3 mt-2">
                 {(report.pekerjaan_dock?.outstanding_po || []).map((po, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <input value={po} onChange={(e) => updatePO(i, e.target.value)} placeholder="No. PO" />
+                  <div key={i} className="border border-slate-200 rounded-md p-3 space-y-2">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label>No. PO</label>
+                        <input value={po?.no_po || ""} onChange={(e) => updatePO(i, "no_po", e.target.value)} placeholder="cth: LRD126061309" />
+                      </div>
+                      <div>
+                        <label>Nama Barang</label>
+                        <input value={po?.nama_barang || ""} onChange={(e) => updatePO(i, "nama_barang", e.target.value)} placeholder="cth: Cooling Fan Alternator" />
+                      </div>
+                    </div>
+                    <div>
+                      <label>Outstanding / Status</label>
+                      <input value={po?.outstanding || ""} onChange={(e) => updatePO(i, "outstanding", e.target.value)} placeholder="cth: Estimasi tiba 21 Juli di Belawan" />
+                    </div>
                     <button type="button" onClick={() => removePO(i)} className="btn-danger">Hapus</button>
                   </div>
                 ))}
+                {(!report.pekerjaan_dock?.outstanding_po || report.pekerjaan_dock.outstanding_po.length === 0) && (
+                  <p className="text-xs text-slate-400">Belum ada barang outstanding dicatat.</p>
+                )}
               </div>
             </div>
 
             <div>
               <p className="text-xs font-bold text-navy-800 mb-2">5. Sumber Daya</p>
+
+              <p className="text-xs font-semibold text-slate-600 mb-1">Crew</p>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label>Deck (orang)</label>
+                  <input type="number" min={0} value={report.pekerjaan_dock?.sumber_daya?.crew?.deck ?? 0} onChange={(e) => updatePekerjaan(["sumber_daya", "crew", "deck"], Number(e.target.value))} />
+                </div>
+                <div>
+                  <label>Engine (orang)</label>
+                  <input type="number" min={0} value={report.pekerjaan_dock?.sumber_daya?.crew?.engine ?? 0} onChange={(e) => updatePekerjaan(["sumber_daya", "crew", "engine"], Number(e.target.value))} />
+                </div>
+              </div>
+
+              <p className="text-xs font-semibold text-slate-600 mb-1">Shipyard</p>
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div>
+                  <label>Welder (orang)</label>
+                  <input type="number" min={0} value={report.pekerjaan_dock?.sumber_daya?.shipyard?.welder ?? 0} onChange={(e) => updatePekerjaan(["sumber_daya", "shipyard", "welder"], Number(e.target.value))} />
+                </div>
+                <div>
+                  <label>Piping (orang)</label>
+                  <input type="number" min={0} value={report.pekerjaan_dock?.sumber_daya?.shipyard?.piping ?? 0} onChange={(e) => updatePekerjaan(["sumber_daya", "shipyard", "piping"], Number(e.target.value))} />
+                </div>
+                <div>
+                  <label>HSE (orang)</label>
+                  <input type="number" min={0} value={report.pekerjaan_dock?.sumber_daya?.shipyard?.hse ?? 0} onChange={(e) => updatePekerjaan(["sumber_daya", "shipyard", "hse"], Number(e.target.value))} />
+                </div>
+                <div>
+                  <label>Docking Undocking (orang)</label>
+                  <input type="number" min={0} value={report.pekerjaan_dock?.sumber_daya?.shipyard?.docking_undocking ?? 0} onChange={(e) => updatePekerjaan(["sumber_daya", "shipyard", "docking_undocking"], Number(e.target.value))} />
+                </div>
+              </div>
+
+              <p className="text-xs font-semibold text-slate-600 mb-1">Teknisi</p>
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label>Crew (orang)</label>
-                  <input type="number" min={0} value={report.pekerjaan_dock?.sumber_daya?.crew ?? 0} onChange={(e) => updatePekerjaan(["sumber_daya", "crew"], Number(e.target.value))} />
+                  <label>Teknisi ME (orang)</label>
+                  <input type="number" min={0} value={report.pekerjaan_dock?.sumber_daya?.teknisi?.me ?? 0} onChange={(e) => updatePekerjaan(["sumber_daya", "teknisi", "me"], Number(e.target.value))} />
                 </div>
                 <div>
-                  <label>Shipyard (orang)</label>
-                  <input type="number" min={0} value={report.pekerjaan_dock?.sumber_daya?.shipyard ?? 0} onChange={(e) => updatePekerjaan(["sumber_daya", "shipyard"], Number(e.target.value))} />
+                  <label>Teknisi AE (orang)</label>
+                  <input type="number" min={0} value={report.pekerjaan_dock?.sumber_daya?.teknisi?.ae ?? 0} onChange={(e) => updatePekerjaan(["sumber_daya", "teknisi", "ae"], Number(e.target.value))} />
                 </div>
                 <div>
-                  <label>Teknisi (orang)</label>
-                  <input type="number" min={0} value={report.pekerjaan_dock?.sumber_daya?.teknisi ?? 0} onChange={(e) => updatePekerjaan(["sumber_daya", "teknisi"], Number(e.target.value))} />
+                  <label>Teknisi Electrician (orang)</label>
+                  <input type="number" min={0} value={report.pekerjaan_dock?.sumber_daya?.teknisi?.electrician ?? 0} onChange={(e) => updatePekerjaan(["sumber_daya", "teknisi", "electrician"], Number(e.target.value))} />
                 </div>
               </div>
             </div>
@@ -402,36 +466,30 @@ function FormContent() {
         <div className="card">
           <p className="section-title">Tanda Tangan Persetujuan</p>
           <div className="grid grid-cols-2 gap-6">
-            <div className="text-center border border-dashed border-slate-300 rounded-lg p-4">
-              <p className="text-xs text-slate-500 mb-2">Dibuat Oleh (Owner Superintendent)</p>
-              {report.dibuat_oleh_nama ? (
-                <div>
-                  <p className="font-semibold text-navy-900 italic">{report.dibuat_oleh_nama}</p>
-                  <p className="text-[10px] text-slate-400">
-                    {new Date(report.ditandatangani_os_at).toLocaleString("id-ID")}
-                  </p>
-                </div>
-              ) : (
-                <button type="button" onClick={handleSignOS} disabled={isSigned} className="btn-primary text-xs">
-                  Tanda Tangan
-                </button>
-              )}
-            </div>
-            <div className="text-center border border-dashed border-slate-300 rounded-lg p-4">
-              <p className="text-xs text-slate-500 mb-2">Diketahui Oleh (Operation Manager)</p>
-              {report.diketahui_oleh_nama ? (
-                <div>
-                  <p className="font-semibold text-navy-900 italic">{report.diketahui_oleh_nama}</p>
-                  <p className="text-[10px] text-slate-400">
-                    {new Date(report.ditandatangani_om_at).toLocaleString("id-ID")}
-                  </p>
-                </div>
-              ) : (
-                <button type="button" onClick={handleSignOM} disabled={!report.dibuat_oleh_nama} className="btn-primary text-xs">
-                  Tanda Tangan &amp; Kunci Laporan
-                </button>
-              )}
-            </div>
+            <SignatureBlock
+              title={`Dibuat Oleh (${report.jabatan || "Owner Superintendent"})`}
+              roleCode="OS"
+              nama={report.dibuat_oleh_nama}
+              jabatanValue={report.jabatan || "Owner Superintendent (OS)"}
+              jabatanOptions={["Owner Superintendent (OS)", "Docking Superintendent (DS)", "Technical Superintendent (TS)"]}
+              onJabatanChange={(v) => updateField("jabatan", v)}
+              barcode={report.dibuat_oleh_barcode}
+              signedAt={report.ditandatangani_os_at}
+              reportId={id}
+              disabled={isSigned}
+              onSign={handleSignOS}
+            />
+            <SignatureBlock
+              title="Diketahui Oleh (Operation Manager)"
+              roleCode="OM"
+              nama={report.diketahui_oleh_nama}
+              jabatanValue="Operation Manager"
+              barcode={report.diketahui_oleh_barcode}
+              signedAt={report.ditandatangani_om_at}
+              reportId={id}
+              disabled={isSigned || !report.dibuat_oleh_nama}
+              onSign={handleSignOM}
+            />
           </div>
         </div>
 
@@ -451,6 +509,9 @@ function FormContent() {
           <div className="flex gap-2">
             <button onClick={handleSave} disabled={saving || isSigned} className="btn-secondary">
               Simpan
+            </button>
+            <button onClick={handleExportPdf} disabled={exportingPdf} className="btn-secondary">
+              {exportingPdf ? "Membuat PDF..." : "Export ke PDF"}
             </button>
             <button onClick={handleExport} disabled={exporting} className="btn-primary">
               {exporting ? "Membuat file..." : "Export ke Word (.docx)"}
