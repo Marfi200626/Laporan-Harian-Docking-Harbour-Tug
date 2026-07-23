@@ -17,18 +17,21 @@ export default function SignatureBlock({
   onSign,
 }) {
   const [draftNama, setDraftNama] = useState(nama || "");
+  const [signing, setSigning] = useState(false);
 
   const isSigned = Boolean(nama && signedAt);
 
-  function handleConfirm() {
+  async function handleConfirm() {
     if (!draftNama.trim()) {
       alert("Ketik nama lengkap terlebih dahulu sebelum tanda tangan.");
       return;
     }
+    setSigning(true);
     const timestamp = new Date().toISOString();
     const code = buildSignatureCode(reportId, roleCode, draftNama.trim(), timestamp);
-    const barcodeDataUrl = generateSignatureStamp(code, draftNama.trim(), timestamp);
-    onSign({ nama: draftNama.trim(), timestamp, barcode: barcodeDataUrl, code });
+    const stampDataUrl = await generateSignatureStamp(code, draftNama.trim(), jabatanValue, timestamp);
+    setSigning(false);
+    onSign({ nama: draftNama.trim(), timestamp, barcode: stampDataUrl, code });
   }
 
   return (
@@ -50,18 +53,10 @@ export default function SignatureBlock({
 
       {isSigned ? (
         <div className="text-center">
-          <p
-            className="text-3xl text-navy-900 mb-1"
-            style={{ fontFamily: "'Segoe Script', 'Brush Script MT', cursive" }}
-          >
-            {nama}
-          </p>
-          <p className="text-xs font-semibold text-navy-800">{jabatanValue}</p>
-          <p className="text-[10px] text-slate-400 mb-2">
-            {new Date(signedAt).toLocaleString("id-ID")}
-          </p>
-          {barcode && (
-            <img src={barcode} alt="Barcode tanda tangan" className="mx-auto h-24" />
+          {barcode ? (
+            <img src={barcode} alt="Tanda tangan" className="mx-auto" style={{ maxWidth: 180 }} />
+          ) : (
+            <p className="text-xs text-slate-400">Stempel tanda tangan tidak tersedia</p>
           )}
         </div>
       ) : (
@@ -84,10 +79,10 @@ export default function SignatureBlock({
           <button
             type="button"
             onClick={handleConfirm}
-            disabled={disabled || !draftNama.trim()}
+            disabled={disabled || signing || !draftNama.trim()}
             className="btn-primary text-xs w-full"
           >
-            Tanda Tangan
+            {signing ? "Membuat QR..." : "Tanda Tangan"}
           </button>
         </div>
       )}

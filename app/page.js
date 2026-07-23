@@ -45,6 +45,22 @@ function DashboardContent() {
     }
   }
 
+  async function handleDelete(e, id) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!confirm("Hapus laporan ini secara permanen? Tindakan ini tidak dapat dibatalkan.")) return;
+    const { error } = await supabase.from("reports").delete().eq("id", id);
+    if (error) {
+      alert(
+        "Gagal menghapus: " +
+          error.message +
+          "\n\nKemungkinan migrasi database belum dijalankan ulang di Supabase (SQL Editor > jalankan schema.sql terbaru)."
+      );
+      return;
+    }
+    setReports((prev) => prev.filter((r) => r.id !== id));
+  }
+
   return (
     <div>
       <Navbar />
@@ -92,6 +108,12 @@ function DashboardContent() {
                   >
                     {r.status === "signed" ? "Ditandatangani" : "Draft"}
                   </span>
+                  <button
+                    onClick={(e) => handleDelete(e, r.id)}
+                    className="text-xs text-red-600 hover:underline font-medium"
+                  >
+                    Hapus
+                  </button>
                 </div>
               </Link>
             ))}

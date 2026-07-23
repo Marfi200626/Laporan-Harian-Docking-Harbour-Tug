@@ -320,10 +320,10 @@ function FormContent() {
                     <td className="py-2 text-slate-400">{item.no}</td>
                     <td className="py-2 pr-2 font-medium">{item.kegiatan}</td>
                     <td className="py-2 pr-2">
-                      <input value={item.target || ""} onChange={(e) => updateJadwal(i, "target", e.target.value)} placeholder="cth: 06:00" />
+                      <input type="datetime-local" value={item.target || ""} onChange={(e) => updateJadwal(i, "target", e.target.value)} />
                     </td>
                     <td className="py-2">
-                      <input value={item.aktual || ""} onChange={(e) => updateJadwal(i, "aktual", e.target.value)} placeholder="cth: 06:20" />
+                      <input type="datetime-local" value={item.aktual || ""} onChange={(e) => updateJadwal(i, "aktual", e.target.value)} />
                     </td>
                   </tr>
                 ))}
@@ -471,6 +471,10 @@ function FormContent() {
                   <label>Docking Undocking (orang)</label>
                   <input type="number" min={0} value={report.pekerjaan_dock?.sumber_daya?.shipyard?.docking_undocking ?? 0} onChange={(e) => updatePekerjaan(["sumber_daya", "shipyard", "docking_undocking"], Number(e.target.value))} />
                 </div>
+                <div>
+                  <label>Team Propulsi (orang)</label>
+                  <input type="number" min={0} value={report.pekerjaan_dock?.sumber_daya?.shipyard?.propulsi ?? 0} onChange={(e) => updatePekerjaan(["sumber_daya", "shipyard", "propulsi"], Number(e.target.value))} />
+                </div>
               </div>
 
               <p className="text-xs font-semibold text-slate-600 mb-1">Teknisi</p>
@@ -486,6 +490,10 @@ function FormContent() {
                 <div>
                   <label>Teknisi Electrician (orang)</label>
                   <input type="number" min={0} value={report.pekerjaan_dock?.sumber_daya?.teknisi?.electrician ?? 0} onChange={(e) => updatePekerjaan(["sumber_daya", "teknisi", "electrician"], Number(e.target.value))} />
+                </div>
+                <div>
+                  <label>Team Propulsi (orang)</label>
+                  <input type="number" min={0} value={report.pekerjaan_dock?.sumber_daya?.teknisi?.propulsi ?? 0} onChange={(e) => updatePekerjaan(["sumber_daya", "teknisi", "propulsi"], Number(e.target.value))} />
                 </div>
               </div>
             </div>

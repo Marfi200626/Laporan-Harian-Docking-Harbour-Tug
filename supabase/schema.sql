@@ -47,8 +47,8 @@ create table if not exists reports (
     "outstanding_po": [],
     "sumber_daya": {
       "crew": {"deck": 0, "engine": 0},
-      "shipyard": {"welder": 0, "piping": 0, "hse": 0, "docking_undocking": 0},
-      "teknisi": {"me": 0, "ae": 0, "electrician": 0}
+      "shipyard": {"welder": 0, "piping": 0, "hse": 0, "docking_undocking": 0, "propulsi": 0},
+      "teknisi": {"me": 0, "ae": 0, "electrician": 0, "propulsi": 0}
     }
   }'::jsonb,
 
