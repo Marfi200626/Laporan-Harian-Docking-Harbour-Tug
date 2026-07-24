@@ -196,7 +196,21 @@ function FormContent() {
 
   async function handleDelete() {
     if (!confirm("Hapus laporan ini secara permanen? Tindakan ini tidak dapat dibatalkan.")) return;
-    await supabase.from("reports").delete().eq("id", id);
+    const { data, error } = await supabase.from("reports").delete().eq("id", id).select("id");
+    if (error) {
+      alert(
+        "Gagal menghapus: " +
+          error.message +
+          "\n\nKemungkinan migrasi database belum dijalankan ulang di Supabase (SQL Editor > jalankan schema.sql terbaru)."
+      );
+      return;
+    }
+    if (!data || data.length === 0) {
+      alert(
+        "Laporan TIDAK berhasil dihapus dari database (izin ditolak diam-diam oleh Supabase).\n\nIni terjadi karena migrasi SQL terbaru belum dijalankan. Buka Supabase > SQL Editor > jalankan ulang seluruh isi file schema.sql, lalu coba hapus lagi."
+      );
+      return;
+    }
     router.push("/");
   }
 
