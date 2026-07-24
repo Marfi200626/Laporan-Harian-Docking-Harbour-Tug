@@ -140,23 +140,29 @@ function FormContent() {
     if (!error) setSavedAt(new Date());
   }, [report, id]);
 
-  async function handleSignOS({ nama, timestamp, barcode }) {
-    const payload = {
-      dibuat_oleh_nama: nama,
-      ditandatangani_os_at: timestamp,
-      dibuat_oleh_barcode: barcode,
-    };
+  async function handleSignOS({ nama, timestamp, barcode, signature, __reset }) {
+    const payload = __reset
+      ? { dibuat_oleh_nama: null, ditandatangani_os_at: null, dibuat_oleh_barcode: null, dibuat_oleh_signature: null }
+      : {
+          dibuat_oleh_nama: nama,
+          ditandatangani_os_at: timestamp,
+          dibuat_oleh_barcode: barcode,
+          dibuat_oleh_signature: signature,
+        };
     setReport((r) => ({ ...r, ...payload }));
     await supabase.from("reports").update(payload).eq("id", id);
   }
 
-  async function handleSignOM({ nama, timestamp, barcode }) {
-    const payload = {
-      diketahui_oleh_nama: nama,
-      ditandatangani_om_at: timestamp,
-      diketahui_oleh_barcode: barcode,
-      status: "signed",
-    };
+  async function handleSignOM({ nama, timestamp, barcode, signature, __reset }) {
+    const payload = __reset
+      ? { diketahui_oleh_nama: null, ditandatangani_om_at: null, diketahui_oleh_barcode: null, diketahui_oleh_signature: null, status: "draft" }
+      : {
+          diketahui_oleh_nama: nama,
+          ditandatangani_om_at: timestamp,
+          diketahui_oleh_barcode: barcode,
+          diketahui_oleh_signature: signature,
+          status: "signed",
+        };
     setReport((r) => ({ ...r, ...payload }));
     await supabase.from("reports").update(payload).eq("id", id);
   }
@@ -536,6 +542,7 @@ function FormContent() {
               nama={report.dibuat_oleh_nama}
               jabatanValue={report.jabatan || "Owner Superintendent (OS)"}
               barcode={report.dibuat_oleh_barcode}
+              signature={report.dibuat_oleh_signature}
               signedAt={report.ditandatangani_os_at}
               reportId={id}
               disabled={isSigned}
@@ -547,6 +554,7 @@ function FormContent() {
               nama={report.diketahui_oleh_nama}
               jabatanValue="Operation Manager"
               barcode={report.diketahui_oleh_barcode}
+              signature={report.diketahui_oleh_signature}
               signedAt={report.ditandatangani_om_at}
               reportId={id}
               disabled={isSigned || !report.dibuat_oleh_nama}

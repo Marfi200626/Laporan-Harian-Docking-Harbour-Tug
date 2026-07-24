@@ -61,10 +61,12 @@ create table if not exists reports (
   dibuat_oleh_jabatan text default 'Owner Superintendent',
   dibuat_oleh_role text default 'OS', -- OS | DS | TS
   dibuat_oleh_barcode text,
+  dibuat_oleh_signature text, -- gambar coretan tanda tangan (data URL)
   ditandatangani_os_at timestamptz,
   diketahui_oleh_nama text,
   diketahui_oleh_jabatan text default 'Operation Manager',
   diketahui_oleh_barcode text,
+  diketahui_oleh_signature text, -- gambar coretan tanda tangan (data URL)
   ditandatangani_om_at timestamptz,
 
   created_by uuid references auth.users(id),
@@ -190,3 +192,5 @@ create policy "dokumentasi_delete_authenticated"
 alter table reports add column if not exists dibuat_oleh_role text default 'OS';
 alter table reports add column if not exists dibuat_oleh_barcode text;
 alter table reports add column if not exists diketahui_oleh_barcode text;
+alter table reports add column if not exists dibuat_oleh_signature text;
+alter table reports add column if not exists diketahui_oleh_signature text;
